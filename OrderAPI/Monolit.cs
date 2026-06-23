@@ -99,7 +99,7 @@ namespace OrderAPI.Classes
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.UseMySql("server=localhost;uid=root;pwd=1234;database=apinew",
+            optionsBuilder.UseMySql("server=localhost;uid=root;pwd=1234;database=orderdb",
                 new MySqlServerVersion(new Version(8, 0, 11)));
         }
 
@@ -360,7 +360,6 @@ namespace OrderAPI.Classes
         [Required(ErrorMessage = "Фамилия обязательна")]
         [StringLength(100, MinimumLength = 1, ErrorMessage = "Фамилия должна быть от 1 до 100 символов")]
         public string Lastname { get; set; }
-
         public IFormFile Photo { get; set; }
     }
 
@@ -577,11 +576,11 @@ namespace OrderAPI.Classes
                 if (db.Users.Any(u => u.Email == request.Email))
                     return Conflict(ApiResponse.Error("Пользователь с таким email уже существует"));
 
-                // Проверка размера фото (максимум 5MB)
+                // Проверка размера фото (только если фото предоставлено)
                 if (request.Photo != null && request.Photo.Length > 5 * 1024 * 1024)
                     return BadRequest(ApiResponse.Error("Размер фото не должен превышать 5MB"));
 
-                // Проверка формата фото
+                // Проверка формата фото (только если фото предоставлено)
                 if (request.Photo != null)
                 {
                     var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif" };
@@ -599,6 +598,7 @@ namespace OrderAPI.Classes
                     Lastname = request.Lastname
                 };
 
+                // Сохраняем фото только если оно предоставлено
                 if (request.Photo != null && request.Photo.Length > 0)
                 {
                     using var ms = new MemoryStream();
