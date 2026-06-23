@@ -1,0 +1,260 @@
+﻿-- =============================================
+-- 1. Создание базы данных
+-- =============================================
+CREATE DATABASE IF NOT EXISTS orderdb 
+CHARACTER SET utf8mb4 
+COLLATE utf8mb4_unicode_ci;
+
+USE orderdb;
+
+-- =============================================
+-- 2. Создание таблиц
+-- =============================================
+
+-- 2.1. Таблица пользователей
+CREATE TABLE IF NOT EXISTS Users (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    Login VARCHAR(100) NOT NULL UNIQUE,
+    Password VARCHAR(255) NOT NULL,
+    Email VARCHAR(255) UNIQUE,
+    Firstname VARCHAR(100),
+    Lastname VARCHAR(100),
+    Photo LONGBLOB,
+    Token VARCHAR(500),
+    Role VARCHAR(50) NOT NULL DEFAULT 'User',
+    INDEX idx_token (Token),
+    INDEX idx_login (Login),
+    INDEX idx_email (Email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 2.2. Таблица городов
+CREATE TABLE IF NOT EXISTS Cities (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    Name VARCHAR(100) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 2.3. Таблица отделов
+CREATE TABLE IF NOT EXISTS Departments (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    Name VARCHAR(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 2.4. Таблица должностей
+CREATE TABLE IF NOT EXISTS Positions (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    Name VARCHAR(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 2.5. Таблица статусов кандидатов
+CREATE TABLE IF NOT EXISTS CandidateStatuses (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    Name VARCHAR(100) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 2.6. Таблица статусов удаления
+CREATE TABLE IF NOT EXISTS RemoveStatuses (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    Name VARCHAR(100) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 2.7. Таблица сотрудников
+CREATE TABLE IF NOT EXISTS Employees (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    Name VARCHAR(255),
+    Email VARCHAR(255),
+    Phone VARCHAR(50),
+    IdDepartment INT,
+    FOREIGN KEY (IdDepartment) REFERENCES Departments(Id) ON DELETE SET NULL,
+    INDEX idx_department (IdDepartment)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 2.8. Таблица вакансий
+CREATE TABLE IF NOT EXISTS Vacancies (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    Title VARCHAR(500) NOT NULL,
+    IdDepartment INT,
+    OpeningDate DATETIME,
+    IdPosition INT,
+    SalaryRange VARCHAR(100),
+    RequiredQuantity INT DEFAULT 0,
+    Experience VARCHAR(100),
+    IdCity INT,
+    IsPublic BOOLEAN DEFAULT FALSE,
+    Description TEXT,
+    TeamOfEmployment VARCHAR(1000),
+    Requirements TEXT,
+    TechnicalQuestions TEXT,
+    TestTask TEXT,
+    IdSpecialist INT,
+    FOREIGN KEY (IdDepartment) REFERENCES Departments(Id) ON DELETE SET NULL,
+    FOREIGN KEY (IdPosition) REFERENCES Positions(Id) ON DELETE SET NULL,
+    FOREIGN KEY (IdCity) REFERENCES Cities(Id) ON DELETE SET NULL,
+    FOREIGN KEY (IdSpecialist) REFERENCES Employees(Id) ON DELETE SET NULL,
+    INDEX idx_department (IdDepartment),
+    INDEX idx_position (IdPosition),
+    INDEX idx_city (IdCity),
+    INDEX idx_specialist (IdSpecialist)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 2.9. Таблица кандидатов
+CREATE TABLE IF NOT EXISTS Candidates (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    Name VARCHAR(255),
+    Email VARCHAR(255),
+    Phone VARCHAR(50),
+    IdDepartment INT,
+    IdStatus INT,
+    IdCity INT,
+    IdVacancy INT,
+    IdHR INT,
+    FOREIGN KEY (IdDepartment) REFERENCES Departments(Id) ON DELETE SET NULL,
+    FOREIGN KEY (IdStatus) REFERENCES CandidateStatuses(Id) ON DELETE SET NULL,
+    FOREIGN KEY (IdCity) REFERENCES Cities(Id) ON DELETE SET NULL,
+    FOREIGN KEY (IdVacancy) REFERENCES Vacancies(Id) ON DELETE SET NULL,
+    FOREIGN KEY (IdHR) REFERENCES Employees(Id) ON DELETE SET NULL,
+    INDEX idx_status (IdStatus),
+    INDEX idx_city (IdCity),
+    INDEX idx_vacancy (IdVacancy),
+    INDEX idx_hr (IdHR)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 2.10. Таблица комментариев к кандидатам
+CREATE TABLE IF NOT EXISTS CandidateComments (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    IdCandidate INT NOT NULL,
+    Comment TEXT,
+    FOREIGN KEY (IdCandidate) REFERENCES Candidates(Id) ON DELETE CASCADE,
+    INDEX idx_candidate (IdCandidate)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 2.11. Таблица файлов вакансий
+CREATE TABLE IF NOT EXISTS VacancyFiles (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    IdVacancy INT NOT NULL,
+    FileName VARCHAR(500),
+    FileData LONGBLOB,
+    FOREIGN KEY (IdVacancy) REFERENCES Vacancies(Id) ON DELETE CASCADE,
+    INDEX idx_vacancy (IdVacancy)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =============================================
+-- 3. Вставка начальных данных
+-- =============================================
+
+-- 3.1. Города
+INSERT INTO Cities (Name) VALUES 
+('Москва'),
+('Санкт-Петербург'),
+('Новосибирск'),
+('Екатеринбург'),
+('Казань'),
+('Нижний Новгород'),
+('Челябинск'),
+('Самара'),
+('Омск'),
+('Ростов-на-Дону'),
+('Уфа'),
+('Красноярск'),
+('Пермь'),
+('Воронеж'),
+('Волгоград');
+
+-- 3.2. Отделы
+INSERT INTO Departments (Name) VALUES 
+('IT отдел'),
+('Отдел маркетинга'),
+('HR отдел'),
+('Финансовый отдел'),
+('Отдел продаж'),
+('Отдел разработки'),
+('Отдел тестирования'),
+('Отдел аналитики'),
+('Отдел поддержки'),
+('Юридический отдел');
+
+-- 3.3. Должности
+INSERT INTO Positions (Name) VALUES 
+('Junior Developer'),
+('Middle Developer'),
+('Senior Developer'),
+('Team Lead'),
+('Project Manager'),
+('Product Manager'),
+('HR Manager'),
+('HR Specialist'),
+('Marketing Specialist'),
+('Sales Manager'),
+('QA Engineer'),
+('DevOps Engineer'),
+('System Administrator'),
+('Business Analyst'),
+('Data Scientist');
+
+-- 3.4. Статусы кандидатов
+INSERT INTO CandidateStatuses (Name) VALUES 
+('Новый'),
+('На рассмотрении'),
+('Телефонное интервью'),
+('Техническое собеседование'),
+('Финальное собеседование'),
+('Offer отправлен'),
+('Offer принят'),
+('Отказ'),
+('В резерве'),
+('Архив');
+
+-- 3.5. Статусы удаления
+INSERT INTO RemoveStatuses (Name) VALUES 
+('Дупликат'),
+('Не соответствует требованиям'),
+('Отозвал заявку'),
+('Не прошел собеседование'),
+('Принят на другую позицию'),
+('Неактуальная вакансия'),
+('Другое');
+
+-- 3.6. Сотрудники
+INSERT INTO Employees (Name, Email, Phone, IdDepartment) VALUES 
+('Иванова Анна', 'anna.ivanova@company.ru', '+7(999)111-22-01', 3),
+('Петрова Мария', 'maria.petrova@company.ru', '+7(999)111-22-02', 3),
+('Сидорова Елена', 'elena.sidorova@company.ru', '+7(999)111-22-03', 3),
+('Кузнецов Дмитрий', 'dmitry.kuznetsov@company.ru', '+7(999)111-22-04', 1),
+('Смирнов Алексей', 'alexey.smirnov@company.ru', '+7(999)111-22-05', 1),
+('Попов Сергей', 'sergey.popov@company.ru', '+7(999)111-22-06', 6),
+('Васильев Игорь', 'igor.vasiliev@company.ru', '+7(999)111-22-07', 2),
+('Михайлова Ольга', 'olga.mikhailova@company.ru', '+7(999)111-22-08', 5),
+('Новиков Андрей', 'andrey.novikov@company.ru', '+7(999)111-22-09', 4),
+('Федорова Татьяна', 'tatiana.fedorova@company.ru', '+7(999)111-22-10', 8);
+
+-- 3.7. Пользователи (с Role)
+INSERT INTO Users (Login, Password, Email, Firstname, Lastname, Role) VALUES 
+('admin', 'admin123', 'admin@company.ru', 'Админ', 'Системы', 'Admin'),
+('hr1', 'hr123456', 'hr1@company.ru', 'Анна', 'Иванова', 'HR'),
+('hr2', 'hr123456', 'hr2@company.ru', 'Мария', 'Петрова', 'HR'),
+('manager', 'manager123', 'manager@company.ru', 'Дмитрий', 'Кузнецов', 'Manager'),
+('user1', 'user123456', 'user1@company.ru', 'Алексей', 'Смирнов', 'User');
+
+-- =============================================
+-- 4. Проверка данных
+-- =============================================
+
+-- Показать все таблицы
+SHOW TABLES;
+
+-- Проверить данные в каждой таблице
+SELECT 'Cities' as TableName, COUNT(*) as Count FROM Cities
+UNION ALL
+SELECT 'Departments', COUNT(*) FROM Departments
+UNION ALL
+SELECT 'Positions', COUNT(*) FROM Positions
+UNION ALL
+SELECT 'CandidateStatuses', COUNT(*) FROM CandidateStatuses
+UNION ALL
+SELECT 'RemoveStatuses', COUNT(*) FROM RemoveStatuses
+UNION ALL
+SELECT 'Employees', COUNT(*) FROM Employees
+UNION ALL
+SELECT 'Users', COUNT(*) FROM Users;
+
+-- Вывести пользователей
+SELECT Id, Login, Email, Firstname, Lastname, Role FROM Users;
