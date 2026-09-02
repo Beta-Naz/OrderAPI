@@ -117,6 +117,7 @@ namespace OrderAPI.Classes
                 entity.Property(e => e.Email).HasMaxLength(255);
                 entity.Property(e => e.Firstname).HasMaxLength(100);
                 entity.Property(e => e.Lastname).HasMaxLength(100);
+                entity.Property(e => e.Photo).IsRequired(false); // Photo может быть null
             });
 
             modelBuilder.Entity<Candidate>(entity =>
@@ -206,8 +207,8 @@ namespace OrderAPI.Classes
         public string Email { get; set; }
         public string Firstname { get; set; }
         public string Lastname { get; set; }
-        public byte[] Photo { get; set; }
-        public string Token { get; set; }
+        public byte[]? Photo { get; set; } // Теперь явно nullable
+        public string? Token { get; set; }
     }
 
     public class Candidate
@@ -223,16 +224,16 @@ namespace OrderAPI.Classes
         public int? IdHR { get; set; }
 
         [ForeignKey("IdStatus")]
-        public virtual CandidateStatus Status { get; set; }
+        public virtual CandidateStatus? Status { get; set; }
 
         [ForeignKey("IdCity")]
-        public virtual City City { get; set; }
+        public virtual City? City { get; set; }
 
         [ForeignKey("IdVacancy")]
-        public virtual Vacancy Vacancy { get; set; }
+        public virtual Vacancy? Vacancy { get; set; }
 
         [ForeignKey("IdHR")]
-        public virtual Employee HR { get; set; }
+        public virtual Employee? HR { get; set; }
     }
 
     public class CandidateComment
@@ -266,7 +267,7 @@ namespace OrderAPI.Classes
         public int? IdDepartment { get; set; }
 
         [ForeignKey("IdDepartment")]
-        public virtual Department Department { get; set; }
+        public virtual Department? Department { get; set; }
     }
 
     public class Department
@@ -307,16 +308,16 @@ namespace OrderAPI.Classes
         public int? IdSpecialist { get; set; }
 
         [ForeignKey("IdDepartment")]
-        public virtual Department Department { get; set; }
+        public virtual Department? Department { get; set; }
 
         [ForeignKey("IdPosition")]
-        public virtual Position Position { get; set; }
+        public virtual Position? Position { get; set; }
 
         [ForeignKey("IdCity")]
-        public virtual City City { get; set; }
+        public virtual City? City { get; set; }
 
         [ForeignKey("IdSpecialist")]
-        public virtual Employee Specialist { get; set; }
+        public virtual Employee? Specialist { get; set; }
     }
 
     public class VacancyFile
@@ -360,7 +361,9 @@ namespace OrderAPI.Classes
         [Required(ErrorMessage = "Фамилия обязательна")]
         [StringLength(100, MinimumLength = 1, ErrorMessage = "Фамилия должна быть от 1 до 100 символов")]
         public string Lastname { get; set; }
-        public IFormFile Photo { get; set; }
+
+        // Фото теперь необязательное (nullable)
+        public IFormFile? Photo { get; set; }
     }
 
     public class CandidateUpdateDTO
@@ -402,7 +405,7 @@ namespace OrderAPI.Classes
         public int IdStatusRemoved { get; set; }
 
         [StringLength(1000, ErrorMessage = "Примечание не может быть длиннее 1000 символов")]
-        public string Note { get; set; }
+        public string? Note { get; set; }
     }
 
     public class CommentDTO
@@ -430,13 +433,13 @@ namespace OrderAPI.Classes
         public int IdPosition { get; set; }
 
         [StringLength(100, ErrorMessage = "Зарплатная вилка не может быть длиннее 100 символов")]
-        public string SalaryRange { get; set; }
+        public string? SalaryRange { get; set; }
 
         [Range(0, int.MaxValue, ErrorMessage = "Количество не может быть отрицательным")]
         public int RequiredQuantity { get; set; }
 
         [StringLength(100, ErrorMessage = "Опыт не может быть длиннее 100 символов")]
-        public string Experience { get; set; }
+        public string? Experience { get; set; }
 
         [Required(ErrorMessage = "Город обязателен")]
         [Range(1, int.MaxValue, ErrorMessage = "Некорректный ID города")]
@@ -445,19 +448,19 @@ namespace OrderAPI.Classes
         public bool IsPublic { get; set; }
 
         [StringLength(5000, ErrorMessage = "Описание не может быть длиннее 5000 символов")]
-        public string Description { get; set; }
+        public string? Description { get; set; }
 
         [StringLength(1000, ErrorMessage = "Команда не может быть длиннее 1000 символов")]
-        public string TeamOfEmployment { get; set; }
+        public string? TeamOfEmployment { get; set; }
 
         [StringLength(5000, ErrorMessage = "Требования не могут быть длиннее 5000 символов")]
-        public string Requirements { get; set; }
+        public string? Requirements { get; set; }
 
         [StringLength(5000, ErrorMessage = "Технические вопросы не могут быть длиннее 5000 символов")]
-        public string TechnicalQuestions { get; set; }
+        public string? TechnicalQuestions { get; set; }
 
         [StringLength(5000, ErrorMessage = "Тестовое задание не может быть длиннее 5000 символов")]
-        public string TestTask { get; set; }
+        public string? TestTask { get; set; }
 
         [Required(ErrorMessage = "Специалист обязателен")]
         [Range(1, int.MaxValue, ErrorMessage = "Некорректный ID специалиста")]
@@ -467,7 +470,7 @@ namespace OrderAPI.Classes
     // ==================== Base Controller with Helpers ====================
     public class BaseController : ControllerBase
     {
-        protected User GetUserByToken(string token)
+        protected User? GetUserByToken(string token)
         {
             if (string.IsNullOrEmpty(token))
                 return null;
@@ -576,19 +579,6 @@ namespace OrderAPI.Classes
                 if (db.Users.Any(u => u.Email == request.Email))
                     return Conflict(ApiResponse.Error("Пользователь с таким email уже существует"));
 
-                // Проверка размера фото (только если фото предоставлено)
-                if (request.Photo != null && request.Photo.Length > 5 * 1024 * 1024)
-                    return BadRequest(ApiResponse.Error("Размер фото не должен превышать 5MB"));
-
-                // Проверка формата фото (только если фото предоставлено)
-                if (request.Photo != null)
-                {
-                    var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif" };
-                    var extension = Path.GetExtension(request.Photo.FileName).ToLower();
-                    if (!allowedExtensions.Contains(extension))
-                        return BadRequest(ApiResponse.Error("Недопустимый формат фото. Разрешены: jpg, jpeg, png, gif"));
-                }
-
                 var user = new User
                 {
                     Login = request.Email,
@@ -598,9 +588,19 @@ namespace OrderAPI.Classes
                     Lastname = request.Lastname
                 };
 
-                // Сохраняем фото только если оно предоставлено
+                // Обработка фото только если оно предоставлено
                 if (request.Photo != null && request.Photo.Length > 0)
                 {
+                    // Проверка размера фото (максимум 5MB)
+                    if (request.Photo.Length > 5 * 1024 * 1024)
+                        return BadRequest(ApiResponse.Error("Размер фото не должен превышать 5MB"));
+
+                    // Проверка формата фото
+                    var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif" };
+                    var extension = Path.GetExtension(request.Photo.FileName).ToLower();
+                    if (!allowedExtensions.Contains(extension))
+                        return BadRequest(ApiResponse.Error("Недопустимый формат фото. Разрешены: jpg, jpeg, png, gif"));
+
                     using var ms = new MemoryStream();
                     await request.Photo.CopyToAsync(ms);
                     user.Photo = ms.ToArray();
@@ -663,19 +663,22 @@ namespace OrderAPI.Classes
                 if (targetUser == null)
                     return NotFound(ApiResponse.Error("Пользователь не найден"));
 
+                // Проверяем наличие фото в базе данных
                 if (targetUser.Photo != null && targetUser.Photo.Length > 0)
                     return File(targetUser.Photo, "image/jpeg");
 
+                // Проверяем наличие файла на диске
                 string imagePath = Path.Combine(Directory.GetCurrentDirectory(), "URL", "img", $"{id}.jpg");
                 if (System.IO.File.Exists(imagePath))
                     return File(System.IO.File.ReadAllBytes(imagePath), "image/jpeg");
 
+                // Если фото нет нигде, возвращаем заглушку или 404
                 return NotFound(ApiResponse.Error("Аватар не найден"));
             });
         }
 
         [HttpPut("userAvatar/{id}")]
-        public async Task<IActionResult> UpdateUserAvatar([FromHeader] string token, int id, IFormFile file)
+        public async Task<IActionResult> UpdateUserAvatar([FromHeader] string token, int id, IFormFile? file)
         {
             if (string.IsNullOrEmpty(token))
                 return Unauthorized(ApiResponse.Error("Токен не предоставлен"));
@@ -683,6 +686,7 @@ namespace OrderAPI.Classes
             if (id <= 0)
                 return BadRequest(ApiResponse.Error("Некорректный ID пользователя"));
 
+            // Если файл не предоставлен - возвращаем ошибку
             if (file == null || file.Length == 0)
                 return BadRequest(ApiResponse.Error("Файл не предоставлен"));
 
@@ -707,6 +711,7 @@ namespace OrderAPI.Classes
                 if (user.Id != id)
                     return Forbid();
 
+                // Сохраняем файл на диск
                 string uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "URL", "img");
                 Directory.CreateDirectory(uploadPath);
 
@@ -714,6 +719,7 @@ namespace OrderAPI.Classes
                 using (var stream = new FileStream(filePath, FileMode.Create))
                     await file.CopyToAsync(stream);
 
+                // Сохраняем в базу данных
                 var dbUser = db.Users.First(u => u.Id == id);
                 using var ms = new MemoryStream();
                 await file.CopyToAsync(ms);
@@ -725,6 +731,46 @@ namespace OrderAPI.Classes
             catch (Exception ex)
             {
                 return StatusCode(500, ApiResponse.Error($"Ошибка обновления аватара: {ex.Message}"));
+            }
+        }
+
+        // Новый метод для удаления аватара
+        [HttpDelete("userAvatar/{id}")]
+        public IActionResult DeleteUserAvatar([FromHeader] string token, int id)
+        {
+            if (string.IsNullOrEmpty(token))
+                return Unauthorized(ApiResponse.Error("Токен не предоставлен"));
+
+            if (id <= 0)
+                return BadRequest(ApiResponse.Error("Некорректный ID пользователя"));
+
+            try
+            {
+                using var db = new DatabaseManager();
+                var user = db.Users.FirstOrDefault(u => u.Token == token);
+
+                if (user == null)
+                    return Unauthorized(ApiResponse.Error("Недействительный токен"));
+
+                if (user.Id != id)
+                    return Forbid();
+
+                var dbUser = db.Users.First(u => u.Id == id);
+
+                // Удаляем фото из базы
+                dbUser.Photo = null;
+
+                // Удаляем файл с диска
+                string imagePath = Path.Combine(Directory.GetCurrentDirectory(), "URL", "img", $"{id}.jpg");
+                if (System.IO.File.Exists(imagePath))
+                    System.IO.File.Delete(imagePath);
+
+                db.SaveChanges();
+                return Ok(ApiResponse.Ok(null, "Аватар удален успешно"));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse.Error($"Ошибка удаления аватара: {ex.Message}"));
             }
         }
     }
